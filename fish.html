@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>游动小鱼</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            background: #f9fafa;
+            color: #d44f11;
+            font-family: Consolas, monospace;
+            overflow: hidden;
+        }
+        .fish-wrap {
+            position: absolute;
+            top: 42%;
+            animation: moveAcross 11s linear infinite;
+        }
+        pre {
+            white-space: pre;
+            font-size: 30px;
+        }
+        @keyframes moveAcross {
+            from {
+                transform: translateX(100vw);
+            }
+            to {
+                transform: translateX(-100%);
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="fish-wrap">
+<pre id="fishEl"></pre>
+</div>
+
+<script>
+// 两套帧改动尾部细节，达成摆尾效果，头部保持原样
+const fishFrames = [
+    '‹•))>>=‹',
+    '‹•))>=‹'
+];
+let frameIndex = 0;
+const fishDom = document.getElementById('fishEl');
+setInterval(() => {
+    fishDom.textContent = fishFrames[frameIndex];
+    frameIndex = (frameIndex + 1) % fishFrames.length;
+}, 380);
+</script>
+</body>
+</html>

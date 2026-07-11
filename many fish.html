@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>游动小鱼儿</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #edf9f9;
+            font-family: Consolas, monospace;
+            overflow: hidden;
+        }
+        .fish-item {
+            position: absolute;
+            white-space: pre;
+        }
+    </style>
+</head>
+<body>
+<script>
+// 小鱼两套摆尾帧
+const fishFrames = [
+    '‹•))>>=‹',
+    '‹•))>=‹'
+];
+const fishCount = 50; // 调整这个数值控制小鱼总数，想要更多就加大数字，比如40、50
+const container = document.body;
+
+// 生成随机工具函数
+function randomRange(min, max) {
+    return Math.random() * (max - min) + min;
+}
+// 生成柔和的随机鱼身颜色
+function randomColor() {
+    const hue = Math.floor(randomRange(5, 355));
+    return `hsl(${hue}, 75%, 55%)`;
+}
+
+// 创建单条小鱼
+function createOneFish() {
+    const fishDiv = document.createElement('div');
+    fishDiv.className = 'fish-item';
+    const fontSize = randomRange(12, 48); // 随机尺寸，控制小鱼大小差异
+    fishDiv.style.fontSize = `${fontSize}px`;
+    fishDiv.style.color = randomColor();
+
+    // 随机初始坐标
+    let x = randomRange(0, window.innerWidth);
+    let y = randomRange(0, window.innerHeight);
+    fishDiv.style.left = `${x}px`;
+    fishDiv.style.top = `${y}px`;
+
+    // 随机运动向量：dx、dy控制各个方向移动，正负就代表左右上下
+    const speed = randomRange(0.1, 1.4);
+    const angle = randomRange(0, Math.PI * 2);
+    const dx = Math.cos(angle) * speed;
+    const dy = Math.sin(angle) * speed;
+
+    // 独立的摆尾定时器
+    let frameIdx = 0;
+    const swingGap = randomRange(28, 520); // 每条鱼摆尾快慢也不一样
+    const swingTimer = setInterval(() => {
+        frameIdx = (frameIdx + 1) % fishFrames.length;
+        fishDiv.textContent = fishFrames[frameIdx];
+    }, swingGap);
+
+    container.appendChild(fishDiv);
+
+    // 位置持续更新
+    const moveTimer = setInterval(() => {
+        x += dx;
+        y += dy;
+        fishDiv.style.left = `${x}px`;
+        fishDiv.style.top = `${y}px`;
+
+        // 小鱼跑出屏幕范围，销毁旧小鱼、重新生成新小鱼
+        const outX = x < -80 || x > window.innerWidth + 80;
+        const outY = y < -80 || y > window.innerHeight + 80;
+        if(outX || outY) {
+            clearInterval(swingTimer);
+            clearInterval(moveTimer);
+            fishDiv.remove();
+            createOneFish();
+        }
+    }, 30);
+}
+
+// 批量初始化所有小鱼
+for(let i = 0; i < fishCount; i++) {
+    createOneFish();
+}
+</script>
+</body>
+</html>
