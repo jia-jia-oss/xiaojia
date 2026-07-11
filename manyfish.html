@@ -19,9 +19,47 @@
             position: absolute;
             white-space: pre;
         }
+        /* HUD 和模态样式 */
+        #hud {
+            position: fixed;
+            right: 16px;
+            top: 12px;
+            background: rgba(255,255,255,0.9);
+            border-radius: 8px;
+            padding: 8px 12px;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+            font-family: Arial, "Microsoft YaHei", sans-serif;
+            color: #0d3a6a;
+            z-index: 9999;
+            text-align: right;
+        }
+        #hud .line { margin: 4px 0; }
+        #hud button { margin-left: 8px; padding: 6px 8px; border-radius:6px; border: none; background:#1f4f8b; color:#fff; cursor:pointer }
+        #overlay {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0,0,0,0.45);
+            z-index: 10000;
+        }
+        #overlay .box {
+            background: #fff;
+            padding: 18px 22px;
+            border-radius: 10px;
+            text-align: center;
+            min-width: 260px;
+        }
     </style>
 </head>
 <body>
+<div id="hud">
+    <div class="line">计时: <span id="timerDisplay">--</span></div>
+    <div class="line">得分: <span id="scoreDisplay">0</span> 最高: <span id="highDisplay">0</span></div>
+    <div class="line"><button id="startBtn">开始 30s</button><button id="stopBtn">退出</button></div>
+</div>
+<div id="overlay"><div class="box"><div id="resultText"></div><div style="margin-top:12px"><button id="replayBtn">再来一次</button> <button id="closeBtn">退出</button></div></div></div>
 <script>
 // 小鱼两套摆尾帧
 const fishFrames = [
@@ -105,7 +143,10 @@ function createOneFish() {
         clearInterval(swingTimer);
         clearInterval(moveTimer);
         fishDiv.remove();
-        clickedCount += 1;
+        if (sessionActive) {
+            sessionScore += 1;
+            updateHUD();
+        }
         accelerateSpawn();
         checkAllCleared();
     });
@@ -158,10 +199,94 @@ clearMsg.style.borderRadius = '8px';
 clearMsg.style.display = 'none';
 document.body.appendChild(clearMsg);
 
+// 游戏会话：30 秒计时、计分、最高记录
+let sessionDuration = 30; // 秒
+let sessionActive = false;
+let sessionTimer = null;
+let timeLeft = sessionDuration;
+let sessionScore = 0;
+let highScore = Number(localStorage.getItem('manyFishHighScore') || 0);
+
+const timerDisplay = document.getElementById('timerDisplay');
+const scoreDisplay = document.getElementById('scoreDisplay');
+const highDisplay = document.getElementById('highDisplay');
+const startBtn = document.getElementById('startBtn');
+const stopBtn = document.getElementById('stopBtn');
+const overlay = document.getElementById('overlay');
+const resultText = document.getElementById('resultText');
+const replayBtn = document.getElementById('replayBtn');
+const closeBtn = document.getElementById('closeBtn');
+
+highDisplay.textContent = highScore;
+
+actionStartGame = () => startSession();
+
+function updateHUD() {
+    timerDisplay.textContent = sessionActive ? `${timeLeft}s` : `-`;
+    scoreDisplay.textContent = sessionScore;
+    highDisplay.textContent = highScore;
+}
+
+function startSession() {
+    // 重置
+    if (sessionActive) return;
+    sessionActive = true;
+    timeLeft = sessionDuration;
+    sessionScore = 0;
+    updateHUD();
+    overlay.style.display = 'none';
+    // 开始倒计时
+    sessionTimer = setInterval(() => {
+        timeLeft -= 1;
+        updateHUD();
+        if (timeLeft <= 0) {
+            endSession();
+        }
+    }, 1000);
+}
+
+function endSession() {
+    sessionActive = false;
+    if (sessionTimer) {
+        clearInterval(sessionTimer);
+        sessionTimer = null;
+    }
+    // 更新最高纪录
+    if (sessionScore > highScore) {
+        highScore = sessionScore;
+        localStorage.setItem('manyFishHighScore', String(highScore));
+    }
+    updateHUD();
+    // 显示结果覆盖层
+    resultText.innerHTML = `<div style="font-size:18px">本轮得分：${sessionScore}</div><div style="margin-top:8px;color:#666">最高纪录：${highScore}</div>`;
+    overlay.style.display = 'flex';
+}
+
+replayBtn.addEventListener('click', () => {
+    overlay.style.display = 'none';
+    startSession();
+});
+closeBtn.addEventListener('click', () => {
+    overlay.style.display = 'none';
+    // 停止自动生成，退出模式
+    if (spawnTimer) { clearInterval(spawnTimer); spawnTimer = null; }
+});
+
+startBtn.addEventListener('click', startSession);
+stopBtn.addEventListener('click', () => {
+    // 退出并停止生成
+    if (spawnTimer) { clearInterval(spawnTimer); spawnTimer = null; }
+    sessionActive = false;
+    if (sessionTimer) { clearInterval(sessionTimer); sessionTimer = null; }
+    updateHUD();
+});
+
 // 点击页面任意处也可以显示当前剩余数量（可选）
-document.body.addEventListener('click', () => {
-    const left = document.querySelectorAll('.fish-item').length;
-    console.log('Remaining fish:', left, 'spawnInterval(ms)=', spawnInterval);
+document.body.addEventListener('click', (e) => {
+    if (!e.target.classList || !e.target.classList.contains('fish-item')) {
+        const left = document.querySelectorAll('.fish-item').length;
+        console.log('Remaining fish:', left, 'spawnInterval(ms)=', spawnInterval);
+    }
 });
 </script>
 </body>
