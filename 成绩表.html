@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>学生成绩表</title>
+    <style>
+        body {
+            font-family: "Microsoft YaHei", Arial, sans-serif;
+            background: #f0f6fb;
+            color: #333;
+            padding: 24px;
+        }
+        h1 {
+            margin-bottom: 16px;
+            color: #1f4f8b;
+        }
+        .card {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(31, 79, 139, 0.12);
+            padding: 20px;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 12px 14px;
+            text-align: center;
+            border: 1px solid #dde5ee;
+        }
+        th {
+            background: #e8f0fb;
+            color: #0d3a6a;
+        }
+        tbody tr:nth-child(even) {
+            background: #f7fafe;
+        }
+        .grade-A { color: #0a7b35; font-weight: 700; }
+        .grade-B { color: #1f4f8b; font-weight: 700; }
+        .grade-C { color: #b36d00; font-weight: 700; }
+        .grade-D { color: #a11f23; font-weight: 700; }
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 18px;
+        }
+        .controls button,
+        .controls input {
+            padding: 10px 14px;
+            border: 1px solid #aac4e8;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        .controls button {
+            background: #1f4f8b;
+            color: #fff;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        .controls button:hover {
+            background: #153d6a;
+        }
+        .controls .input-group {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .controls .input-group label {
+            min-width: 56px;
+            text-align: right;
+            color: #4b5f7e;
+        }
+        .info {
+            margin-top: 18px;
+            color: #4b5f7e;
+        }
+        .notice {
+            color: #ad3f3f;
+            margin-top: 8px;
+        }
+    </style>
+</head>
+<body>
+<div class="card">
+    <h1>学生成绩表</h1>
+    <div class="controls">
+        <button id="calculateBtn">重新计算成绩</button>
+        <button id="addRowBtn">添加学生</button>
+        <button id="importBtn">导入成绩文件</button>
+        <input type="file" id="fileInput" accept=".csv,.txt" />
+        <div class="input-group">
+            <label for="studentName">姓名</label>
+            <input type="text" id="studentName" placeholder="张三" />
+        </div>
+        <div class="input-group">
+            <label for="chinese">语文</label>
+            <input type="number" id="chinese" placeholder="85" min="0" max="100" />
+        </div>
+        <div class="input-group">
+            <label for="math">数学</label>
+            <input type="number" id="math" placeholder="92" min="0" max="100" />
+        </div>
+        <div class="input-group">
+            <label for="english">英语</label>
+            <input type="number" id="english" placeholder="78" min="0" max="100" />
+        </div>
+    </div>
+    <div class="notice">点击“重新计算成绩”可更新总分、平均分和等级；添加学生后，同样点击它即可刷新表格。可通过“导入成绩文件”加载 CSV 或制表符文本文件。</div>
+    <table>
+        <thead>
+            <tr>
+                <th>序号</th>
+                <th>学号</th>
+                <th>姓名</th>
+                <th>语文</th>
+                <th>数学</th>
+                <th>英语</th>
+                <th>总分</th>
+                <th>平均分</th>
+                <th>等级</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody id="gradeTableBody">
+            <tr>
+                <td>1</td>
+                <td>2026001</td>
+                <td>张三</td>
+                <td>88</td>
+                <td>92</td>
+                <td>79</td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td><button class="deleteBtn">删除</button></td>
+            </tr>
+            <tr>
+                <td>2</td>
+                <td>2026002</td>
+                <td>李四</td>
+                <td>74</td>
+                <td>81</td>
+                <td>85</td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td><button class="deleteBtn">删除</button></td>
+            </tr>
+            <tr>
+                <td>3</td>
+                <td>2026003</td>
+                <td>王五</td>
+                <td>93</td>
+                <td>99</td>
+                <td>95</td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td><button class="deleteBtn">删除</button></td>
+            </tr>
+        </tbody>
+    </table>
+    <div class="info" id="summaryInfo"></div>
+</div>
+<script>
+    const gradeBody = document.getElementById('gradeTableBody');
+    const calculateBtn = document.getElementById('calculateBtn');
+    const addRowBtn = document.getElementById('addRowBtn');
+    const summaryInfo = document.getElementById('summaryInfo');
+
+    function getGrade(average) {
+        if (average >= 90) return 'A';
+        if (average >= 80) return 'B';
+        if (average >= 70) return 'C';
+        return 'D';
+    }
+
+    function refreshTable() {
+        const rows = Array.from(gradeBody.querySelectorAll('tr'));
+        let totalCount = 0;
+        let totalSum = 0;
+        rows.forEach((row, index) => {
+            const cells = row.querySelectorAll('td');
+            const chinese = Number(cells[3].textContent) || 0;
+            const math = Number(cells[4].textContent) || 0;
+            const english = Number(cells[5].textContent) || 0;
+            const total = chinese + math + english;
+            const average = total / 3;
+            const grade = getGrade(average);
+
+            cells[0].textContent = index + 1;
+            cells[6].textContent = total;
+            cells[7].textContent = average.toFixed(1);
+            cells[8].textContent = grade;
+            cells[8].className = 'grade-' + grade;
+
+            totalCount += 1;
+            totalSum += average;
+        });
+
+        if (totalCount > 0) {
+            const classAverage = (totalSum / totalCount).toFixed(2);
+            summaryInfo.textContent = `当前共有 ${totalCount} 名学生，平均成绩 ${classAverage} 分。`;
+        } else {
+            summaryInfo.textContent = '当前没有学生数据。';
+        }
+    }
+
+    function addStudent() {
+        const name = document.getElementById('studentName').value.trim();
+        const chinese = document.getElementById('chinese').value.trim();
+        const math = document.getElementById('math').value.trim();
+        const english = document.getElementById('english').value.trim();
+
+        if (!name || chinese === '' || math === '' || english === '') {
+            alert('请填写姓名和全部成绩后再添加学生。');
+            return;
+        }
+
+        const index = gradeBody.querySelectorAll('tr').length + 1;
+        const studentId = `2026${String(index).padStart(3, '0')}`;
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${index}</td>
+            <td>${studentId}</td>
+            <td>${name}</td>
+            <td>${Number(chinese)}</td>
+            <td>${Number(math)}</td>
+            <td>${Number(english)}</td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td><button class="deleteBtn">删除</button></td>
+        `;
+        gradeBody.appendChild(row);
+        refreshTable();
+
+        document.getElementById('studentName').value = '';
+        document.getElementById('chinese').value = '';
+        document.getElementById('math').value = '';
+        document.getElementById('english').value = '';
+    }
+    function setupDeleteHandler() {
+        gradeBody.addEventListener('click', event => {
+            if (event.target.classList.contains('deleteBtn')) {
+                const row = event.target.closest('tr');
+                if (row) {
+                    row.remove();
+                    refreshTable();
+                }
+            }
+        });
+    }
+    calculateBtn.addEventListener('click', refreshTable);
+    addRowBtn.addEventListener('click', addStudent);
+    setupDeleteHandler();
+
+    const fileInput = document.getElementById('fileInput');
+    const importBtn = document.getElementById('importBtn');
+
+    function parseTextToRows(text) {
+        const lines = text.trim().split(/\r?\n/).filter(line => line.trim());
+        if (!lines.length) return [];
+        return lines.map(line => {
+            const parts = line.split(/[,\t]/).map(item => item.trim());
+            return {
+                studentId: parts[0] || '',
+                name: parts[1] || parts[0] || '',
+                chinese: parts[2] || parts[1] || '0',
+                math: parts[3] || parts[2] || '0',
+                english: parts[4] || parts[3] || '0'
+            };
+        });
+    }
+
+    function addRowsFromFile(dataRows) {
+        dataRows.forEach(rowData => {
+            const index = gradeBody.querySelectorAll('tr').length + 1;
+            const studentId = rowData.studentId || `2026${String(index).padStart(3, '0')}`;
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${index}</td>
+                <td>${studentId}</td>
+                <td>${rowData.name}</td>
+                <td>${Number(rowData.chinese) || 0}</td>
+                <td>${Number(rowData.math) || 0}</td>
+                <td>${Number(rowData.english) || 0}</td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td><button class="deleteBtn">删除</button></td>
+            `;
+            gradeBody.appendChild(row);
+        });
+        refreshTable();
+    }
+
+    importBtn.addEventListener('click', () => {
+        fileInput.click();
+    });
+
+    fileInput.addEventListener('change', event => {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+            const text = reader.result;
+            const rows = parseTextToRows(text);
+            if (!rows.length) {
+                alert('文件内容为空或格式不正确。请检查文件后重试。');
+                return;
+            }
+            addRowsFromFile(rows);
+        };
+        reader.readAsText(file, 'UTF-8');
+        fileInput.value = '';
+    });
+
+    refreshTable();
+</script>
+</body>
+</html>
