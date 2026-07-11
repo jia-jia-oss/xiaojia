@@ -78,14 +78,16 @@ function randomColor() {
 }
 
 // 生成控制：初始并发数量 + 动态生成速率
-let initialFish = 40;
-let spawnInterval = 2000; // 毫秒
-const minSpawnInterval = 80; // 最低间隔，避免无限加速
-const spawnAccelerateFactor = 0.85; // 每次点击后乘以该系数
+let initialFish = 25;
+let spawnInterval = 6500; // 毫秒，鱼出现更慢一些
+const baseSpawnInterval = 6500;
+const minSpawnInterval = 120; // 最低间隔，避免无限加速
+const spawnAccelerateFactor = 0.82; // 每次点击后加速
 let spawnTimer = null;
 
-// 点击计数（仅用于可能的显示或调试）
+// 游戏状态
 let clickedCount = 0;
+let gameExited = false;
 
 function accelerateSpawn() {
     spawnInterval = Math.max(minSpawnInterval, Math.floor(spawnInterval * spawnAccelerateFactor));
@@ -123,8 +125,8 @@ function createOneFish() {
     fishDiv.style.left = `${x}px`;
     fishDiv.style.top = `${y}px`;
 
-    // 随机运动向量
-    const speed = randomRange(0.2, 1.6);
+    // 随机运动向量，速度更快
+    const speed = randomRange(2.8, 5.0);
     const angle = randomRange(0, Math.PI * 2);
     const dx = Math.cos(angle) * speed;
     const dy = Math.sin(angle) * speed;
@@ -140,6 +142,10 @@ function createOneFish() {
     // 点击移除并加速生成
     fishDiv.addEventListener('click', (e) => {
         e.stopPropagation();
+        if (gameExited) return;
+        if (!sessionActive) {
+            startSession();
+        }
         clearInterval(swingTimer);
         clearInterval(moveTimer);
         fishDiv.remove();
@@ -182,8 +188,19 @@ for (let i = 0; i < initialFish; i++) {
     createOneFish();
 }
 
-// 启动自动生成器：随着点击加速，spawnInterval 会变小
-spawnTimer = setInterval(() => createOneFish(), spawnInterval);
+function resetGameField() {
+    document.querySelectorAll('.fish-item').forEach(item => item.remove());
+    spawnInterval = baseSpawnInterval;
+    clickedCount = 0;
+    gameExited = false;
+    if (spawnTimer) {
+        clearInterval(spawnTimer);
+        spawnTimer = null;
+    }
+    for (let i = 0; i < initialFish; i++) {
+        createOneFish();
+    }
+}
 
 // 在页面角落显示完成提示（初始隐藏）
 const clearMsg = document.createElement('div');
@@ -230,11 +247,18 @@ function updateHUD() {
 function startSession() {
     // 重置
     if (sessionActive) return;
+    if (gameExited) return;
     sessionActive = true;
     timeLeft = sessionDuration;
     sessionScore = 0;
     updateHUD();
     overlay.style.display = 'none';
+    if (spawnTimer) {
+        clearInterval(spawnTimer);
+    }
+    spawnTimer = setInterval(() => {
+        if (!gameExited) createOneFish();
+    }, spawnInterval);
     // 开始倒计时
     sessionTimer = setInterval(() => {
         timeLeft -= 1;
@@ -264,22 +288,34 @@ function endSession() {
 
 replayBtn.addEventListener('click', () => {
     overlay.style.display = 'none';
+    resetGameField();
     startSession();
 });
 closeBtn.addEventListener('click', () => {
     overlay.style.display = 'none';
-    // 停止自动生成，退出模式
-    if (spawnTimer) { clearInterval(spawnTimer); spawnTimer = null; }
+    exitGame();
 });
 
-startBtn.addEventListener('click', startSession);
+startBtn.addEventListener('click', () => {
+    if (!sessionActive) {
+        resetGameField();
+        startSession();
+    }
+});
 stopBtn.addEventListener('click', () => {
-    // 退出并停止生成
-    if (spawnTimer) { clearInterval(spawnTimer); spawnTimer = null; }
+    exitGame();
+});
+
+function exitGame() {
+    gameExited = true;
     sessionActive = false;
+    if (spawnTimer) { clearInterval(spawnTimer); spawnTimer = null; }
     if (sessionTimer) { clearInterval(sessionTimer); sessionTimer = null; }
     updateHUD();
-});
+    overlay.style.display = 'flex';
+    resultText.innerHTML = `<div style="font-size:18px">已退出游戏</div>`;
+}
+
 
 // 点击页面任意处也可以显示当前剩余数量（可选）
 document.body.addEventListener('click', (e) => {
