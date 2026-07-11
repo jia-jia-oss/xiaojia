@@ -2,328 +2,700 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>游动小鱼儿</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>贪吃蛇</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
         body {
-            background: #edf9f9;
-            font-family: Consolas, monospace;
+            height: 100vh;
+            background: radial-gradient(circle at center, #2b1055 0%, #7597de 40%, #000000 100%);
             overflow: hidden;
+            font-family: 'Segoe UI', 'Arial', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            touch-action: none;
         }
-        .fish-item {
+
+        .star {
             position: absolute;
-            white-space: pre;
+            background: white;
+            border-radius: 50%;
+            opacity: 0;
+            animation: twinkle linear infinite;
         }
-        /* HUD 和模态样式 */
-        #hud {
-            position: fixed;
-            right: 16px;
-            top: 12px;
-            background: rgba(255,255,255,0.9);
-            border-radius: 8px;
-            padding: 8px 12px;
-            box-shadow: 0 6px 18px rgba(0,0,0,0.12);
-            font-family: Arial, "Microsoft YaHei", sans-serif;
-            color: #0d3a6a;
-            z-index: 9999;
-            text-align: right;
+
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.2; transform: scale(0.8); }
+            50% { opacity: 1; transform: scale(1.3); box-shadow: 0 0 4px white; }
         }
-        #hud .line { margin: 4px 0; }
-        #hud button { margin-left: 8px; padding: 6px 8px; border-radius:6px; border: none; background:#1f4f8b; color:#fff; cursor:pointer }
-        #overlay {
-            position: fixed;
+
+        .game-wrapper {
+            position: relative;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .score-board {
+            color: white;
+            font-size: 1.4rem;
+            letter-spacing: 3px;
+            text-shadow: 0 0 12px rgba(255,255,255,0.3);
+            background: rgba(255,255,255,0.06);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 12px;
+            padding: 10px 40px;
+            min-width: 200px;
+            text-align: center;
+        }
+
+        .score-board span {
+            color: #7dffb3;
+            font-weight: bold;
+            font-size: 1.6rem;
+        }
+
+        canvas {
+            border: 2px solid rgba(255,255,255,0.2);
+            border-radius: 12px;
+            background: rgba(0, 0, 0, 0.35);
+            box-shadow: 0 0 40px rgba(100, 150, 255, 0.15);
+            display: block;
+            max-width: 90vw;
+            max-height: 70vh;
+        }
+
+        .canvas-wrapper {
+            position: relative;
+            border-radius: 12px;
+        }
+
+        .pause-overlay,
+        .countdown {
+            position: absolute;
             inset: 0;
             display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 25;
+            border-radius: 12px;
+        }
+
+        .pause-overlay.show,
+        .countdown.show {
+            display: flex;
+        }
+
+        .pause-box {
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 20px;
+            padding: 36px 56px;
+            text-align: center;
+            box-shadow: 0 0 40px rgba(255,255,255,0.1);
+        }
+
+        .pause-box .pause-title {
+            font-size: 2.4rem;
+            color: white;
+            letter-spacing: 4px;
+            text-shadow: 0 0 20px rgba(255,255,255,0.4);
+            margin-bottom: 12px;
+        }
+
+        .pause-box .pause-hint {
+            font-size: 1rem;
+            color: rgba(255,255,255,0.6);
+            letter-spacing: 2px;
+        }
+
+        .countdown-number {
+            font-size: 8rem;
+            font-weight: bold;
+            color: white;
+            text-shadow: 0 0 30px #fff, 0 0 60px #ffd700, 0 0 90px #ffd700;
+            animation: countPop 0.8s ease-out;
+        }
+
+        @keyframes countPop {
+            0% { transform: scale(2.5); opacity: 0; }
+            40% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(0.9); opacity: 0.85; }
+        }
+
+        .lobby {
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 24px;
+            z-index: 30;
+        }
+
+        .lobby.hidden {
+            display: none;
+        }
+
+        .lobby h1 {
+            color: white;
+            font-size: 2.2rem;
+            letter-spacing: 6px;
+            text-shadow: 0 0 20px rgba(255,255,255,0.3);
+            font-weight: 300;
+        }
+
+        .lobby .high-score {
+            color: rgba(255,255,255,0.7);
+            font-size: 1.1rem;
+            letter-spacing: 2px;
+        }
+
+        .lobby .high-score span {
+            color: #ffd700;
+            font-weight: bold;
+            font-size: 1.6rem;
+            text-shadow: 0 0 12px rgba(255,215,0,0.4);
+        }
+
+        .start-btn {
+            padding: 16px 56px;
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 16px;
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            color: white;
+            font-size: 1.2rem;
+            letter-spacing: 4px;
+            cursor: pointer;
+            transition: transform 0.25s ease, background 0.25s ease, box-shadow 0.25s ease;
+            box-shadow: 0 0 18px rgba(255,255,255,0.08);
+        }
+
+        .start-btn:hover {
+            transform: scale(1.08);
+            background: rgba(255,255,255,0.18);
+            box-shadow: 0 0 30px rgba(255,255,255,0.2);
+        }
+
+        .start-btn:active {
+            transform: scale(0.95);
+        }
+
+        .overlay {
+            display: none;
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            border-radius: 12px;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            z-index: 20;
+        }
+
+        .overlay.show {
+            display: flex;
+        }
+
+        .overlay h2 {
+            color: white;
+            font-size: 2.4rem;
+            text-shadow: 0 0 20px rgba(255,80,80,0.6);
+            letter-spacing: 4px;
+        }
+
+        .overlay .final-score {
+            color: rgba(255,255,255,0.8);
+            font-size: 1.2rem;
+            letter-spacing: 2px;
+        }
+
+        .overlay .final-score span {
+            color: #7dffb3;
+            font-weight: bold;
+            font-size: 1.8rem;
+        }
+
+        .restart-btn {
+            padding: 14px 48px;
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 14px;
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            color: white;
+            font-size: 1.1rem;
+            letter-spacing: 3px;
+            cursor: pointer;
+            transition: transform 0.25s ease, background 0.25s ease, box-shadow 0.25s ease;
+            box-shadow: 0 0 18px rgba(255,255,255,0.08);
+        }
+
+        .restart-btn:hover {
+            transform: scale(1.08);
+            background: rgba(255,255,255,0.18);
+            box-shadow: 0 0 30px rgba(255,255,255,0.2);
+        }
+
+        .restart-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* 虚拟方向键 */
+        .dpad {
+            display: none;
+            gap: 6px;
+            margin-top: 6px;
+        }
+
+        .dpad-row {
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .dpad-btn {
+            width: 64px;
+            height: 64px;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 14px;
+            background: rgba(255,255,255,0.08);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            color: white;
+            font-size: 1.6rem;
+            display: flex;
             align-items: center;
             justify-content: center;
-            background: rgba(0,0,0,0.45);
-            z-index: 10000;
+            cursor: pointer;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+            transition: background 0.15s;
         }
-        #overlay .box {
-            background: #fff;
-            padding: 18px 22px;
-            border-radius: 10px;
-            text-align: center;
-            min-width: 260px;
+
+        .dpad-btn:active {
+            background: rgba(255,255,255,0.25);
+        }
+
+        .dpad-placeholder {
+            width: 64px;
+            height: 64px;
+            visibility: hidden;
+        }
+
+        @media (pointer: coarse) {
+            .dpad { display: flex; flex-direction: column; align-items: center; }
+        }
+
+        /* 移动端悬浮暂停按钮 */
+        .mobile-pause-btn {
+            display: none;
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 48px;
+            height: 48px;
+            border: 1px solid rgba(255,255,255,0.25);
+            border-radius: 14px;
+            background: rgba(255,255,255,0.12);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            color: white;
+            font-size: 1.4rem;
+            z-index: 35;
+            cursor: pointer;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+            transition: background 0.2s, transform 0.15s;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+        }
+
+        .mobile-pause-btn:active {
+            transform: scale(0.9);
+            background: rgba(255,255,255,0.25);
+        }
+
+        .mobile-pause-btn.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
     </style>
 </head>
 <body>
-<div id="hud">
-    <div class="line">计时: <span id="timerDisplay">--</span></div>
-    <div class="line">得分: <span id="scoreDisplay">0</span> 最高: <span id="highDisplay">0</span></div>
-    <div class="line"><button id="startBtn">开始 30s</button><button id="stopBtn">退出</button></div>
-</div>
-<div id="overlay"><div class="box"><div id="resultText"></div><div style="margin-top:12px"><button id="replayBtn">再来一次</button> <button id="closeBtn">退出</button></div></div></div>
-<script>
-// 小鱼两套摆尾帧
-const fishFrames = [
-    '‹•))>>=‹',
-    '‹•))>=‹'
-];
-const container = document.body;
 
-// 生成随机工具函数
-function randomRange(min, max) {
-    return Math.random() * (max - min) + min;
-}
-function randomColor() {
-    const hue = Math.floor(randomRange(5, 355));
-    return `hsl(${hue}, 75%, 55%)`;
-}
+    <div class="game-wrapper">
+        <div class="score-board">得分：<span id="scoreDisplay">0</span></div>
+        <div class="canvas-wrapper">
+            <canvas id="gameCanvas" width="400" height="400"></canvas>
+            <button class="mobile-pause-btn" id="mobilePauseBtn">⏸</button>
+            <div class="lobby" id="lobby">
+                <h1>✦ 贪吃蛇 ✦</h1>
+                <div class="high-score">历史最高分：<span id="highScoreDisplay">0</span> 分</div>
+                <button class="start-btn" id="startBtn">开始游戏</button>
+            </div>
+            <div class="countdown" id="countdown"><div class="countdown-number" id="countdownNumber">3</div></div>
+            <div class="pause-overlay" id="pauseOverlay">
+                <div class="pause-box">
+                    <div class="pause-title">⏸ 游戏已暂停</div>
+                    <div class="pause-hint">按空格键继续</div>
+                </div>
+            </div>
+            <div class="overlay" id="gameOverlay">
+                <h2>游戏结束</h2>
+                <div class="final-score">最终得分：<span id="finalScore">0</span></div>
+                <button class="restart-btn" id="restartBtn">返回大厅</button>
+            </div>
+        </div>
+        <div class="dpad">
+            <div class="dpad-row">
+                <div class="dpad-placeholder"></div>
+                <button class="dpad-btn" data-dir="up">▲</button>
+                <div class="dpad-placeholder"></div>
+            </div>
+            <div class="dpad-row">
+                <button class="dpad-btn" data-dir="left">◀</button>
+                <button class="dpad-btn" data-dir="down">▼</button>
+                <button class="dpad-btn" data-dir="right">▶</button>
+            </div>
+        </div>
+    </div>
 
-// 生成控制：初始并发数量 + 动态生成速率
-let initialFish = 25;
-let spawnInterval = 6500; // 毫秒，鱼出现更慢一些
-const baseSpawnInterval = 6500;
-const minSpawnInterval = 120; // 最低间隔，避免无限加速
-const spawnAccelerateFactor = 0.82; // 每次点击后加速
-let spawnTimer = null;
+    <script>
+        (function () {
+            const canvas = document.getElementById('gameCanvas');
+            const ctx = canvas.getContext('2d');
+            const scoreDisplay = document.getElementById('scoreDisplay');
+            const finalScore = document.getElementById('finalScore');
+            const overlay = document.getElementById('gameOverlay');
+            const restartBtn = document.getElementById('restartBtn');
+            const lobby = document.getElementById('lobby');
+            const startBtn = document.getElementById('startBtn');
+            const highScoreDisplay = document.getElementById('highScoreDisplay');
 
-// 游戏状态
-let clickedCount = 0;
-let gameExited = false;
+            const SIZE = canvas.width;
+            const GRID = 20;
+            const CELL = SIZE / GRID;
 
-function accelerateSpawn() {
-    spawnInterval = Math.max(minSpawnInterval, Math.floor(spawnInterval * spawnAccelerateFactor));
-    if (spawnTimer) {
-        clearInterval(spawnTimer);
-        spawnTimer = setInterval(() => createOneFish(), spawnInterval);
-    }
-}
+            const BASE_INTERVAL = 140;
+            const MIN_INTERVAL = 50;
+            const SPEEDUP_EVERY = 3;
 
-function checkAllCleared() {
-    const remaining = document.querySelectorAll('.fish-item').length;
-    if (remaining === 0) {
-        // 停止自动生成
-        if (spawnTimer) {
-            clearInterval(spawnTimer);
-            spawnTimer = null;
-        }
-        // 显示提示
-        const el = document.getElementById('clearMsg');
-        if (el) el.style.display = 'block';
-    }
-}
+            let snake, food, direction, nextDirection, score, gameLoop, running, currentInterval, countdownActive, paused;
 
-// 创建单条小鱼，返回元素
-function createOneFish() {
-    const fishDiv = document.createElement('div');
-    fishDiv.className = 'fish-item';
-    const fontSize = randomRange(12, 48);
-    fishDiv.style.fontSize = `${fontSize}px`;
-    fishDiv.style.color = randomColor();
+            const isMobile = navigator.maxTouchPoints > 0 || window.matchMedia('(pointer: coarse)').matches;
+            const mobilePauseBtn = document.getElementById('mobilePauseBtn');
+            const pauseHint = document.querySelector('.pause-hint');
+            if (isMobile && pauseHint) pauseHint.textContent = '点击右上角按钮继续';
 
-    // 随机初始坐标
-    let x = randomRange(0, window.innerWidth);
-    let y = randomRange(0, window.innerHeight);
-    fishDiv.style.left = `${x}px`;
-    fishDiv.style.top = `${y}px`;
-
-    // 随机运动向量，速度更快
-    const speed = randomRange(2.8, 5.0);
-    const angle = randomRange(0, Math.PI * 2);
-    const dx = Math.cos(angle) * speed;
-    const dy = Math.sin(angle) * speed;
-
-    // 摆尾
-    let frameIdx = 0;
-    const swingGap = randomRange(28, 520);
-    const swingTimer = setInterval(() => {
-        frameIdx = (frameIdx + 1) % fishFrames.length;
-        fishDiv.textContent = fishFrames[frameIdx];
-    }, swingGap);
-
-    // 点击移除并加速生成
-    fishDiv.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (gameExited) return;
-        if (!sessionActive) {
-            startSession();
-        }
-        clearInterval(swingTimer);
-        clearInterval(moveTimer);
-        fishDiv.remove();
-        if (sessionActive) {
-            sessionScore += 1;
-            updateHUD();
-        }
-        accelerateSpawn();
-        checkAllCleared();
-    });
-
-    container.appendChild(fishDiv);
-
-    // 位置更新
-    const moveTimer = setInterval(() => {
-        x += dx;
-        y += dy;
-        fishDiv.style.left = `${x}px`;
-        fishDiv.style.top = `${y}px`;
-
-        const outX = x < -80 || x > window.innerWidth + 80;
-        const outY = y < -80 || y > window.innerHeight + 80;
-        if (outX || outY) {
-            clearInterval(swingTimer);
-            clearInterval(moveTimer);
-            // 如果鱼超出则移除并生成一条新鱼（维持页面活跃）
-            if (fishDiv.parentElement) fishDiv.remove();
-            // 仅在未全部清空时补充新鱼
-            if (document.querySelectorAll('.fish-item').length > 0 || spawnTimer) {
-                createOneFish();
+            function updatePauseBtnIcon() {
+                if (!isMobile) return;
+                mobilePauseBtn.textContent = paused ? '▶' : '⏸';
             }
-        }
-    }, 30);
 
-    return fishDiv;
-}
+            function getHighScore() {
+                return parseInt(localStorage.getItem('snakeHighScore') || '0', 10);
+            }
 
-// 批量初始化
-for (let i = 0; i < initialFish; i++) {
-    createOneFish();
-}
+            function setHighScore(val) {
+                localStorage.setItem('snakeHighScore', String(val));
+            }
 
-function resetGameField() {
-    document.querySelectorAll('.fish-item').forEach(item => item.remove());
-    spawnInterval = baseSpawnInterval;
-    clickedCount = 0;
-    gameExited = false;
-    if (spawnTimer) {
-        clearInterval(spawnTimer);
-        spawnTimer = null;
-    }
-    for (let i = 0; i < initialFish; i++) {
-        createOneFish();
-    }
-}
+            highScoreDisplay.textContent = getHighScore();
 
-// 在页面角落显示完成提示（初始隐藏）
-const clearMsg = document.createElement('div');
-clearMsg.id = 'clearMsg';
-clearMsg.textContent = '恭喜，页面中已无小鱼！';
-clearMsg.style.position = 'fixed';
-clearMsg.style.right = '20px';
-clearMsg.style.bottom = '20px';
-clearMsg.style.padding = '10px 14px';
-clearMsg.style.background = 'rgba(0,0,0,0.6)';
-clearMsg.style.color = '#fff';
-clearMsg.style.borderRadius = '8px';
-clearMsg.style.display = 'none';
-document.body.appendChild(clearMsg);
+            function initGame() {
+                snake = [
+                    { x: 10, y: 10 },
+                    { x: 9, y: 10 },
+                    { x: 8, y: 10 }
+                ];
+                direction = 'right';
+                nextDirection = 'right';
+                score = 0;
+                running = false;
+                paused = false;
+                countdownActive = true;
+                currentInterval = BASE_INTERVAL;
+                scoreDisplay.textContent = '0';
+                overlay.classList.remove('show');
+                lobby.classList.add('hidden');
+                if (isMobile) {
+                    mobilePauseBtn.classList.add('show');
+                    mobilePauseBtn.textContent = '⏸';
+                }
+                spawnFood();
+                draw();
+                if (gameLoop) clearInterval(gameLoop);
+                startCountdown();
+            }
 
-// 游戏会话：30 秒计时、计分、最高记录
-let sessionDuration = 30; // 秒
-let sessionActive = false;
-let sessionTimer = null;
-let timeLeft = sessionDuration;
-let sessionScore = 0;
-let highScore = Number(localStorage.getItem('manyFishHighScore') || 0);
+            function startCountdown() {
+                const el = document.getElementById('countdown');
+                const num = document.getElementById('countdownNumber');
+                let count = 3;
 
-const timerDisplay = document.getElementById('timerDisplay');
-const scoreDisplay = document.getElementById('scoreDisplay');
-const highDisplay = document.getElementById('highDisplay');
-const startBtn = document.getElementById('startBtn');
-const stopBtn = document.getElementById('stopBtn');
-const overlay = document.getElementById('overlay');
-const resultText = document.getElementById('resultText');
-const replayBtn = document.getElementById('replayBtn');
-const closeBtn = document.getElementById('closeBtn');
+                function show(n) {
+                    num.textContent = n;
+                    num.style.animation = 'none';
+                    void num.offsetHeight;
+                    num.style.animation = 'countPop 0.8s ease-out';
+                    el.classList.add('show');
+                }
 
-highDisplay.textContent = highScore;
+                show(count);
+                const interval = setInterval(() => {
+                    count--;
+                    if (count > 0) {
+                        show(count);
+                    } else {
+                        clearInterval(interval);
+                        el.classList.remove('show');
+                        countdownActive = false;
+                        running = true;
+                        gameLoop = setInterval(tick, currentInterval);
+                    }
+                }, 1000);
+            }
 
-actionStartGame = () => startSession();
+            function spawnFood() {
+                const maxAttempts = 1000;
+                for (let i = 0; i < maxAttempts; i++) {
+                    const x = Math.floor(Math.random() * GRID);
+                    const y = Math.floor(Math.random() * GRID);
+                    if (!snake.some(seg => seg.x === x && seg.y === y)) {
+                        food = { x, y };
+                        return;
+                    }
+                }
+            }
 
-function updateHUD() {
-    timerDisplay.textContent = sessionActive ? `${timeLeft}s` : `-`;
-    scoreDisplay.textContent = sessionScore;
-    highDisplay.textContent = highScore;
-}
+            function tick() {
+                if (!running) return;
+                direction = nextDirection;
 
-function startSession() {
-    // 重置
-    if (sessionActive) return;
-    if (gameExited) return;
-    sessionActive = true;
-    timeLeft = sessionDuration;
-    sessionScore = 0;
-    updateHUD();
-    overlay.style.display = 'none';
-    if (spawnTimer) {
-        clearInterval(spawnTimer);
-    }
-    spawnTimer = setInterval(() => {
-        if (!gameExited) createOneFish();
-    }, spawnInterval);
-    // 开始倒计时
-    sessionTimer = setInterval(() => {
-        timeLeft -= 1;
-        updateHUD();
-        if (timeLeft <= 0) {
-            endSession();
-        }
-    }, 1000);
-}
+                const head = { ...snake[0] };
+                switch (direction) {
+                    case 'up':    head.y--; break;
+                    case 'down':  head.y++; break;
+                    case 'left':  head.x--; break;
+                    case 'right': head.x++; break;
+                }
 
-function endSession() {
-    sessionActive = false;
-    if (sessionTimer) {
-        clearInterval(sessionTimer);
-        sessionTimer = null;
-    }
-    // 更新最高纪录
-    if (sessionScore > highScore) {
-        highScore = sessionScore;
-        localStorage.setItem('manyFishHighScore', String(highScore));
-    }
-    updateHUD();
-    // 显示结果覆盖层
-    resultText.innerHTML = `<div style="font-size:18px">本轮得分：${sessionScore}</div><div style="margin-top:8px;color:#666">最高纪录：${highScore}</div>`;
-    overlay.style.display = 'flex';
-}
+                if (head.x < 0 || head.x >= GRID || head.y < 0 || head.y >= GRID) {
+                    gameOver();
+                    return;
+                }
 
-replayBtn.addEventListener('click', () => {
-    overlay.style.display = 'none';
-    resetGameField();
-    startSession();
-});
-closeBtn.addEventListener('click', () => {
-    overlay.style.display = 'none';
-    exitGame();
-});
+                if (snake.some(seg => seg.x === head.x && seg.y === head.y)) {
+                    gameOver();
+                    return;
+                }
 
-startBtn.addEventListener('click', () => {
-    if (!sessionActive) {
-        resetGameField();
-        startSession();
-    }
-});
-stopBtn.addEventListener('click', () => {
-    exitGame();
-});
+                snake.unshift(head);
 
-function exitGame() {
-    gameExited = true;
-    sessionActive = false;
-    if (spawnTimer) { clearInterval(spawnTimer); spawnTimer = null; }
-    if (sessionTimer) { clearInterval(sessionTimer); sessionTimer = null; }
-    updateHUD();
-    overlay.style.display = 'flex';
-    resultText.innerHTML = `<div style="font-size:18px">已退出游戏</div>`;
-}
+                if (head.x === food.x && head.y === food.y) {
+                    score++;
+                    scoreDisplay.textContent = score;
+                    spawnFood();
+                    adjustSpeed();
+                } else {
+                    snake.pop();
+                }
 
+                draw();
+            }
 
-// 点击页面任意处也可以显示当前剩余数量（可选）
-document.body.addEventListener('click', (e) => {
-    if (!e.target.classList || !e.target.classList.contains('fish-item')) {
-        const left = document.querySelectorAll('.fish-item').length;
-        console.log('Remaining fish:', left, 'spawnInterval(ms)=', spawnInterval);
-    }
-});
-</script>
+            function adjustSpeed() {
+                const length = snake.length;
+                const steps = Math.floor((length - 3) / SPEEDUP_EVERY);
+                const newInterval = Math.max(MIN_INTERVAL, BASE_INTERVAL - steps * 15);
+                if (newInterval !== currentInterval) {
+                    currentInterval = newInterval;
+                    clearInterval(gameLoop);
+                    gameLoop = setInterval(tick, currentInterval);
+                }
+            }
+
+            function togglePause() {
+                if (!running || countdownActive) return;
+                const el = document.getElementById('pauseOverlay');
+                if (!paused) {
+                    paused = true;
+                    clearInterval(gameLoop);
+                    el.classList.add('show');
+                } else {
+                    el.classList.remove('show');
+                    paused = false;
+                    countdownActive = true;
+                    startCountdown();
+                }
+                updatePauseBtnIcon();
+            }
+
+            function gameOver() {
+                running = false;
+                paused = false;
+                document.getElementById('pauseOverlay').classList.remove('show');
+                clearInterval(gameLoop);
+                finalScore.textContent = score;
+
+                const high = getHighScore();
+                if (score > high) {
+                    setHighScore(score);
+                }
+
+                if (isMobile) mobilePauseBtn.classList.remove('show');
+                overlay.classList.add('show');
+            }
+
+            function backToLobby() {
+                overlay.classList.remove('show');
+                highScoreDisplay.textContent = getHighScore();
+                lobby.classList.remove('hidden');
+                if (isMobile) mobilePauseBtn.classList.remove('show');
+            }
+
+            function draw() {
+                ctx.clearRect(0, 0, SIZE, SIZE);
+
+                ctx.shadowBlur = 12;
+                ctx.shadowColor = '#7dffb3';
+
+                snake.forEach((seg, i) => {
+                    const x = seg.x * CELL;
+                    const y = seg.y * CELL;
+                    const pad = 1;
+                    const r = 6;
+
+                    const alpha = 1 - i * 0.03;
+                    ctx.globalAlpha = Math.max(alpha, 0.4);
+                    ctx.fillStyle = i === 0 ? '#7dffb3' : '#5ce68a';
+                    ctx.beginPath();
+                    ctx.moveTo(x + pad + r, y + pad);
+                    ctx.lineTo(x + CELL - pad - r, y + pad);
+                    ctx.quadraticCurveTo(x + CELL - pad, y + pad, x + CELL - pad, y + pad + r);
+                    ctx.lineTo(x + CELL - pad, y + CELL - pad - r);
+                    ctx.quadraticCurveTo(x + CELL - pad, y + CELL - pad, x + CELL - pad - r, y + CELL - pad);
+                    ctx.lineTo(x + pad + r, y + CELL - pad);
+                    ctx.quadraticCurveTo(x + pad, y + CELL - pad, x + pad, y + CELL - pad - r);
+                    ctx.lineTo(x + pad, y + pad + r);
+                    ctx.quadraticCurveTo(x + pad, y + pad, x + pad + r, y + pad);
+                    ctx.closePath();
+                    ctx.fill();
+                });
+
+                ctx.globalAlpha = 1;
+                ctx.shadowColor = '#ff4466';
+                ctx.shadowBlur = 18;
+
+                ctx.fillStyle = '#ff4466';
+                ctx.beginPath();
+                const fx = food.x * CELL + CELL / 2;
+                const fy = food.y * CELL + CELL / 2;
+                const fr = CELL / 2 - 2;
+                ctx.arc(fx, fy, fr, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.shadowBlur = 0;
+            }
+
+            function setDirection(dir) {
+                if (countdownActive || paused) return;
+                const opposites = { up: 'down', down: 'up', left: 'right', right: 'left' };
+                if (dir !== opposites[direction]) {
+                    nextDirection = dir;
+                }
+            }
+
+            document.addEventListener('keydown', e => {
+                if (e.key === ' ') {
+                    e.preventDefault();
+                    togglePause();
+                    return;
+                }
+                const map = {
+                    ArrowUp: 'up', ArrowDown: 'down',
+                    ArrowLeft: 'left', ArrowRight: 'right'
+                };
+                const dir = map[e.key];
+                if (dir) {
+                    e.preventDefault();
+                    setDirection(dir);
+                }
+            });
+
+            document.querySelectorAll('.dpad-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    setDirection(btn.dataset.dir);
+                });
+                btn.addEventListener('touchstart', e => {
+                    e.preventDefault();
+                    setDirection(btn.dataset.dir);
+                }, { passive: false });
+            });
+
+            startBtn.addEventListener('click', initGame);
+            startBtn.addEventListener('touchend', e => {
+                e.preventDefault();
+                initGame();
+            });
+
+            restartBtn.addEventListener('click', backToLobby);
+            restartBtn.addEventListener('touchend', e => {
+                e.preventDefault();
+                backToLobby();
+            });
+
+            if (isMobile) {
+                mobilePauseBtn.addEventListener('click', e => {
+                    e.preventDefault();
+                    togglePause();
+                });
+                mobilePauseBtn.addEventListener('touchend', e => {
+                    e.preventDefault();
+                    togglePause();
+                });
+            }
+
+            // 星空背景
+            (function createStars() {
+                const count = 180;
+                for (let i = 0; i < count; i++) {
+                    const star = document.createElement('div');
+                    star.className = 'star';
+                    star.style.left = Math.random() * 100 + 'vw';
+                    star.style.top = Math.random() * 100 + 'vh';
+                    const size = Math.random() * 3 + 1;
+                    star.style.width = size + 'px';
+                    star.style.height = size + 'px';
+                    star.style.animationDuration = (Math.random() * 3 + 2) + 's';
+                    star.style.animationDelay = (Math.random() * 5) + 's';
+                    document.body.appendChild(star);
+                }
+            })();
+        })();
+    </script>
 </body>
 </html>
