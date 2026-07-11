@@ -28,24 +28,54 @@ const fishFrames = [
     '‹•))>>=‹',
     '‹•))>=‹'
 ];
-const fishCount = 50; // 调整这个数值控制小鱼总数，想要更多就加大数字，比如40、50
 const container = document.body;
 
 // 生成随机工具函数
 function randomRange(min, max) {
     return Math.random() * (max - min) + min;
 }
-// 生成柔和的随机鱼身颜色
 function randomColor() {
     const hue = Math.floor(randomRange(5, 355));
     return `hsl(${hue}, 75%, 55%)`;
 }
 
-// 创建单条小鱼
+// 生成控制：初始并发数量 + 动态生成速率
+let initialFish = 40;
+let spawnInterval = 2000; // 毫秒
+const minSpawnInterval = 80; // 最低间隔，避免无限加速
+const spawnAccelerateFactor = 0.85; // 每次点击后乘以该系数
+let spawnTimer = null;
+
+// 点击计数（仅用于可能的显示或调试）
+let clickedCount = 0;
+
+function accelerateSpawn() {
+    spawnInterval = Math.max(minSpawnInterval, Math.floor(spawnInterval * spawnAccelerateFactor));
+    if (spawnTimer) {
+        clearInterval(spawnTimer);
+        spawnTimer = setInterval(() => createOneFish(), spawnInterval);
+    }
+}
+
+function checkAllCleared() {
+    const remaining = document.querySelectorAll('.fish-item').length;
+    if (remaining === 0) {
+        // 停止自动生成
+        if (spawnTimer) {
+            clearInterval(spawnTimer);
+            spawnTimer = null;
+        }
+        // 显示提示
+        const el = document.getElementById('clearMsg');
+        if (el) el.style.display = 'block';
+    }
+}
+
+// 创建单条小鱼，返回元素
 function createOneFish() {
     const fishDiv = document.createElement('div');
     fishDiv.className = 'fish-item';
-    const fontSize = randomRange(12, 48); // 随机尺寸，控制小鱼大小差异
+    const fontSize = randomRange(12, 48);
     fishDiv.style.fontSize = `${fontSize}px`;
     fishDiv.style.color = randomColor();
 
@@ -55,45 +85,84 @@ function createOneFish() {
     fishDiv.style.left = `${x}px`;
     fishDiv.style.top = `${y}px`;
 
-    // 随机运动向量：dx、dy控制各个方向移动，正负就代表左右上下
-    const speed = randomRange(0.1, 1.4);
+    // 随机运动向量
+    const speed = randomRange(0.2, 1.6);
     const angle = randomRange(0, Math.PI * 2);
     const dx = Math.cos(angle) * speed;
     const dy = Math.sin(angle) * speed;
 
-    // 独立的摆尾定时器
+    // 摆尾
     let frameIdx = 0;
-    const swingGap = randomRange(28, 520); // 每条鱼摆尾快慢也不一样
+    const swingGap = randomRange(28, 520);
     const swingTimer = setInterval(() => {
         frameIdx = (frameIdx + 1) % fishFrames.length;
         fishDiv.textContent = fishFrames[frameIdx];
     }, swingGap);
 
+    // 点击移除并加速生成
+    fishDiv.addEventListener('click', (e) => {
+        e.stopPropagation();
+        clearInterval(swingTimer);
+        clearInterval(moveTimer);
+        fishDiv.remove();
+        clickedCount += 1;
+        accelerateSpawn();
+        checkAllCleared();
+    });
+
     container.appendChild(fishDiv);
 
-    // 位置持续更新
+    // 位置更新
     const moveTimer = setInterval(() => {
         x += dx;
         y += dy;
         fishDiv.style.left = `${x}px`;
         fishDiv.style.top = `${y}px`;
 
-        // 小鱼跑出屏幕范围，销毁旧小鱼、重新生成新小鱼
         const outX = x < -80 || x > window.innerWidth + 80;
         const outY = y < -80 || y > window.innerHeight + 80;
-        if(outX || outY) {
+        if (outX || outY) {
             clearInterval(swingTimer);
             clearInterval(moveTimer);
-            fishDiv.remove();
-            createOneFish();
+            // 如果鱼超出则移除并生成一条新鱼（维持页面活跃）
+            if (fishDiv.parentElement) fishDiv.remove();
+            // 仅在未全部清空时补充新鱼
+            if (document.querySelectorAll('.fish-item').length > 0 || spawnTimer) {
+                createOneFish();
+            }
         }
     }, 30);
+
+    return fishDiv;
 }
 
-// 批量初始化所有小鱼
-for(let i = 0; i < fishCount; i++) {
+// 批量初始化
+for (let i = 0; i < initialFish; i++) {
     createOneFish();
 }
+
+// 启动自动生成器：随着点击加速，spawnInterval 会变小
+spawnTimer = setInterval(() => createOneFish(), spawnInterval);
+
+// 在页面角落显示完成提示（初始隐藏）
+const clearMsg = document.createElement('div');
+clearMsg.id = 'clearMsg';
+clearMsg.textContent = '恭喜，页面中已无小鱼！';
+clearMsg.style.position = 'fixed';
+clearMsg.style.right = '20px';
+clearMsg.style.bottom = '20px';
+clearMsg.style.padding = '10px 14px';
+clearMsg.style.background = 'rgba(0,0,0,0.6)';
+clearMsg.style.color = '#fff';
+clearMsg.style.borderRadius = '8px';
+clearMsg.style.display = 'none';
+document.body.appendChild(clearMsg);
+
+// 点击页面任意处也可以显示当前剩余数量（可选）
+document.body.addEventListener('click', () => {
+    const left = document.querySelectorAll('.fish-item').length;
+    console.log('Remaining fish:', left, 'spawnInterval(ms)=', spawnInterval);
+});
 </script>
 </body>
 </html>
